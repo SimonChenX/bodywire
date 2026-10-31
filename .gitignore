@@ -31,3 +31,6 @@ vendor/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# MediaPipe models (downloaded by tools/download_models.py)
+models/*.task

@@ -103,18 +103,47 @@ future fragmentation flag.
 5. On `confidence == 0`, hold the previous position briefly (≤ 250 ms) instead
    of snapping to the origin.
 
-## Optional control datagrams (reserved, not in v1)
+## Control datagrams (`BWC1`)
 
-A future `BWC1` datagram will carry JSON calibration:
+Control messages share the UDP port and are distinguished by their magic.
+They carry JSON so new fields can be added without a protocol bump.
+
+| Offset | Size | Field |
+| --- | --- | --- |
+| 0 | 4 | magic `BWC1` |
+| 4 | 1 | version (`1`) |
+| 5 | 1 | type: `1` calibration, `2` heartbeat |
+| 6 | 2 | payload length (`u16`, little-endian) |
+| 8 | N | UTF-8 JSON payload |
+
+### Calibration (`type = 1`)
+
+Sent on start and every `--calibration-interval` seconds (default 2 s).
 
 ```json
 {
   "type": "calibration",
-  "color": {"fx": 613.5, "fy": 613.2, "cx": 319.1, "cy": 238.7, "width": 640, "height": 480},
-  "depth": {"fx": 570.3, "fy": 570.3, "cx": 319.5, "cy": 239.5, "width": 640, "height": 480},
+  "protocol": "bodywire/1",
+  "device": {"name": "Astra+", "pid": 1590, "serial_number": "BY1A810004N", "firmware": "1.0.18"},
   "aligned": true,
-  "coordinate_space": "color"
+  "coordinate_space": "color",
+  "units": "mm",
+  "color": {"fx": 479.32, "fy": 479.32, "cx": 320.46, "cy": 236.52, "width": 640, "height": 480},
+  "depth": {"fx": 479.32, "fy": 479.32, "cx": 320.46, "cy": 236.52, "width": 640, "height": 480},
+  "depth_profile": "depth 640x480@30 Y16",
+  "color_profile": "color 640x480@30 MJPG"
 }
 ```
 
-Until then, calibration is out of band (config file or receiver defaults).
+`coordinate_space` is `color` when software D2C is enabled (the normal case)
+and `depth` when the firmware fell back to native depth. Receivers should use
+this to decide how to interpret the skeleton origin.
+
+### Heartbeat (`type = 2`)
+
+Sent every second so receivers can distinguish "camera stopped" from "no
+person in view".
+
+```json
+{"type": "heartbeat", "fps": 24.1, "detection_rate": 0.97}
+```

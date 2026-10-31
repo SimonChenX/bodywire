@@ -22,8 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 pose = [
-    "mediapipe>=0.10",
-    "onnxruntime>=1.17",
+    "mediapipe>=1.0",
 ]
 dev = [
     "pytest>=8",

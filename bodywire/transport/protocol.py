@@ -47,9 +47,11 @@ comfortably below the typical 1472-byte payload limit.
 
 from __future__ import annotations
 
+import json
 import struct
 from dataclasses import dataclass, field
-from typing import Iterable
+from enum import IntEnum
+from typing import Any, Iterable
 
 from ..skeleton.k4abt import (
     JOINT_COUNT,
@@ -61,6 +63,7 @@ from ..skeleton.k4abt import (
 )
 
 MAGIC = b"BWR1"
+CONTROL_MAGIC = b"BWC1"
 VERSION = 1
 DEFAULT_PORT = 9871
 _MAX_BODIES = 255
@@ -68,9 +71,16 @@ _MAX_BODIES = 255
 _HEADER = struct.Struct("<4sBBBBQQ")
 _JOINT = struct.Struct("<iiiB3x")
 _BODY_HEADER = struct.Struct("<BBBB")
+_CONTROL = struct.Struct("<4sBBH")
 
 assert _HEADER.size == 24
 assert _JOINT.size == 16
+assert _CONTROL.size == 8
+
+
+class ControlType(IntEnum):
+    CALIBRATION = 1
+    HEARTBEAT = 2
 
 
 @dataclass(frozen=True)
@@ -207,12 +217,48 @@ def unpack_frame(data: bytes) -> SkeletonFrame:
     )
 
 
+def pack_control(kind: int | ControlType, payload: dict[str, Any] | None = None) -> bytes:
+    """Serialise a ``BWC1`` control datagram (calibration / heartbeat)."""
+    body = json.dumps(payload or {}, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    if len(body) > 0xFFFF:
+        raise ValueError("control payload too large")
+    return _CONTROL.pack(CONTROL_MAGIC, VERSION, int(kind), len(body)) + body
+
+
+def unpack_control(data: bytes) -> tuple[ControlType, dict[str, Any]]:
+    """Parse a ``BWC1`` control datagram."""
+    if len(data) < _CONTROL.size:
+        raise ValueError("control packet too short")
+    magic, version, kind, length = _CONTROL.unpack_from(data, 0)
+    if magic != CONTROL_MAGIC:
+        raise ValueError(f"bad control magic: {magic!r}")
+    if version != VERSION:
+        raise ValueError(f"unsupported control version: {version}")
+    body = data[_CONTROL.size : _CONTROL.size + length]
+    if len(body) != length:
+        raise ValueError("truncated control payload")
+    try:
+        payload = json.loads(body.decode("utf-8")) if body else {}
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"invalid control JSON: {exc}") from exc
+    return ControlType(kind), payload
+
+
+def is_control(data: bytes) -> bool:
+    return data[:4] == CONTROL_MAGIC
+
+
 __all__ = [
+    "CONTROL_MAGIC",
     "DEFAULT_PORT",
     "MAGIC",
     "VERSION",
     "Body",
+    "ControlType",
     "SkeletonFrame",
+    "is_control",
+    "pack_control",
     "pack_frame",
+    "unpack_control",
     "unpack_frame",
 ]

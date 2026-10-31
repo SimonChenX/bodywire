@@ -1,13 +1,7 @@
-"""Pose layer: 2D landmarks from MediaPipe Pose (33) plus Hands (21/hand).
+"""Pose layer: 2D landmarks from MediaPipe Pose (33) plus Hands (21 per hand).
 
-Planned interface (M1)::
-
-    detector = MediaPipePose()
-    result = detector.detect(color_bgr)      # -> PoseResult | None
-    points_3d = lift_to_3d(result, depth_mm, intrinsic)
-
-Keeping the dataclasses here means the capture, skeleton and transport layers
-never import MediaPipe directly.
+The data classes here are the boundary between MediaPipe and the rest of
+bodywire; ``skeleton`` and ``transport`` never import MediaPipe directly.
 """
 
 from __future__ import annotations
@@ -19,19 +13,30 @@ import numpy as np
 
 @dataclass(frozen=True)
 class Landmark:
-    """Normalised image landmark, MediaPipe convention."""
+    """One landmark, MediaPipe convention.
+
+    ``x``/``y``/``z`` are normalised image coordinates (``z`` is roughly the
+    depth relative to the hips, in the same scale as ``x``). ``visibility`` and
+    ``presence`` are MediaPipe confidences in ``0..1``.
+    """
 
     x: float
     y: float
-    z: float
+    z: float = 0.0
     visibility: float = 1.0
+    presence: float = 1.0
+
+    @property
+    def score(self) -> float:
+        return min(self.visibility, self.presence)
 
 
 @dataclass(frozen=True)
 class PoseResult:
-    """One person: 33 pose landmarks + optional per-hand landmarks."""
+    """One person: 33 pose landmarks, optional world landmarks and hands."""
 
     pose: tuple[Landmark, ...]
+    world: tuple[Landmark, ...] = ()
     left_hand: tuple[Landmark, ...] = ()
     right_hand: tuple[Landmark, ...] = ()
     score: float = 0.0
