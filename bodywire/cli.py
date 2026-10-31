@@ -262,6 +262,17 @@ def _cmd_run(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_jumpwork(args: argparse.Namespace) -> int:
+    from .jumpwork.service import run as run_jumpwork
+
+    return run_jumpwork(
+        port=args.port,
+        host=args.host,
+        bodywire_port=args.bodywire_port,
+        write_flag=not args.no_flag,
+    )
+
+
 def _cmd_listen(args: argparse.Namespace) -> int:
     receiver = SkeletonReceiver(port=args.port, host=args.bind, timeout=0.5)
     print(f"listening on udp {args.bind}:{receiver.port} (Ctrl+C to stop)")
@@ -378,6 +389,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_listen.add_argument("--duration", type=float, default=0.0)
     p_listen.add_argument("--json", action="store_true", help="print one JSON object per frame")
     p_listen.set_defaults(func=_cmd_listen)
+
+    p_jump = sub.add_parser("jumpwork", help="serve JUMPWORK's pose-service protocol")
+    p_jump.add_argument("--port", type=int, default=11102, help="WebSocket port JUMPWORK connects to")
+    p_jump.add_argument("--host", default="0.0.0.0")
+    p_jump.add_argument("--bodywire-port", type=int, default=9871, help="UDP port bodywire publishes to")
+    p_jump.add_argument("--no-flag", action="store_true", help="do not write %%TEMP%%\\jumporin_shared_memory")
+    p_jump.set_defaults(func=_cmd_jumpwork)
 
     return parser
 
