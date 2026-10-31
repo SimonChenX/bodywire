@@ -1,5 +1,8 @@
 # Running bodywire
 
+[English](running.md) | [简体中文](../zh/running.md)
+
+
 ## Commands
 
 | Command | Purpose |
@@ -11,6 +14,7 @@
 | `bodywire probe --pose --show --depth-view` | live preview window |
 | `bodywire run` | capture → infer → publish over UDP |
 | `bodywire listen` | receive and print packets (reference receiver) |
+| `bodywire jumpwork` | serve JUMPWORK's pose-service protocol |
 
 ## Preview
 
@@ -63,6 +67,16 @@ Typical frame line:
 ```
 frame 120: body=1 state=2 head=(40,-120,1950)mm conf=3 pelvis=(0,0,2050)mm
 ```
+
+## JUMPWORK service
+
+```powershell
+bodywire run --host 127.0.0.1 --port 9871
+bodywire jumpwork --port 11102 --bodywire-port 9871
+```
+
+The service writes `%TEMP%\jumporin_shared_memory`; JUMPWORK connects to
+`ws://localhost:11102` automatically. See [jumpwork.md](jumpwork.md).
 
 ## Network notes
 

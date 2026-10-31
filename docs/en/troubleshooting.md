@@ -1,5 +1,8 @@
 # Troubleshooting
 
+[English](troubleshooting.md) | [简体中文](../zh/troubleshooting.md)
+
+
 ## `OrbbecSDK.dll not found`
 
 Set `BODYWIRE_ORBBEC_SDK` to the SDK `lib` directory (or to the DLL path).
@@ -103,3 +106,11 @@ The plugin is provided as source and was not compiled in this repository
 - UE 5.1+ (uses `TAtomic`, `FUTF8ToTCHAR`, `FSocket`)
 - module dependencies `Core`, `CoreUObject`, `Engine`, `Sockets`
 - add `"Bodywire"` to the project's plugin list or enable it in the editor
+## JUMPWORK stays at `Camera Status: Connecting`
+
+- Make sure `bodywire jumpwork` is running and
+  `%TEMP%\jumporin_shared_memory` exists.
+- The game connects to port `11102`; keep the default.
+- The official `jumpworker_pose.exe` is not shipped with the Steam build; the
+  bodywire service replaces it.
+- See [jumpwork.md](jumpwork.md).

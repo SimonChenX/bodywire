@@ -1,5 +1,8 @@
 # bodywire/1 wire format
 
+[English](bodywire-v1.md) | [简体中文](bodywire-v1.zh-CN.md)
+
+
 Status: **draft, implemented in `bodywire.transport.protocol`**
 
 Transport: **UDP**, one datagram per frame, unicast (default port `9871`).

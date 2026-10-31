@@ -1,5 +1,8 @@
 # Unity receiver
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+
 Two files, no package dependencies:
 
 | File | Purpose |

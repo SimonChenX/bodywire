@@ -1,5 +1,8 @@
 # Architecture
 
+[English](architecture.md) | [简体中文](../zh/architecture.md)
+
+
 bodywire turns an Orbbec Astra+ into a markerless body-tracking source whose
 output looks like Azure Kinect Body Tracking (`k4abt`) output, but without the
 Azure depth engine.
@@ -23,7 +26,7 @@ One Euro + short hold                     →  stable skeleton
    │  bodywire/transport
 bodywire/1 UDP datagram (+ BWC1 control)
    ▼
-Unity / Unreal / Python receivers
+Unity / Unreal / Python / JUMPWORK receivers
 ```
 
 ## Why not replace `k4a.dll`?

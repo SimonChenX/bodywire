@@ -1,5 +1,8 @@
 # Installation
 
+[English](install.md) | [简体中文](../zh/install.md)
+
+
 ## Requirements
 
 | Item | Notes |
@@ -41,10 +44,10 @@ git clone git@github.com:SimonChenX/bodywire.git
 cd bodywire
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[pose,dev]"
+python -m pip install -e ".[pose,jumpwork,dev]"
 ```
 
-`[pose]` pulls MediaPipe and ONNX Runtime. `[dev]` pulls pytest.
+`[pose]` pulls MediaPipe, `[jumpwork]` pulls WebSocket + AES (for the JUMPWORK service), `[dev]` pulls pytest.
 
 ## 3. Download the MediaPipe models
 

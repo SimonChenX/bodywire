@@ -1,5 +1,7 @@
 # bodywire
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Markerless full-body tracking from an **Orbbec Astra+** (depth + RGB), streamed
 as **k4abt-compatible skeletons over UDP**.
 
@@ -21,18 +23,19 @@ Astra+ ──► OrbbecSDK ──► MediaPipe Pose/Hands ──► 3D lift ─�
 | Wire format + control packets | `bodywire.transport` | ✅ unit-tested |
 | Daemon (`bodywire run`) | `bodywire.daemon` | ✅ end-to-end on hardware |
 | Python receiver | `bodywire.receiver` | ✅ tested |
+| JUMPWORK pose service | `bodywire.jumpwork` | ✅ verified in-game |
 | Unity receiver | `receivers/unity` | ⚠️ source only (no Unity here) |
 | Unreal receiver | `receivers/unreal` | ⚠️ source only (no UE here) |
 
 Not a goal: replacing `k4a.dll`/`k4abt.dll` as binaries. See
-[`docs/architecture.md`](docs/architecture.md#why-not-replace-k4adll).
+[`docs/en/architecture.md`](docs/en/architecture.md#why-not-replace-k4adll).
 
 ## Quick start
 
 ```powershell
 git clone git@github.com:SimonChenX/bodywire.git
 cd bodywire
-python -m pip install -e ".[pose,dev]"
+python -m pip install -e ".[pose,jumpwork,dev]"
 python tools\download_models.py
 
 $env:BODYWIRE_ORBBEC_SDK = "D:\Orbbec\OrbbecSDK_v1.10.37\SDK\lib"
@@ -47,6 +50,31 @@ bodywire run --host 127.0.0.1 --port 9871
 bodywire listen --port 9871
 ```
 
+## JUMPWORK
+
+JUMPWORK's motion capture uses a local **Python pose service**, not `k4a`.
+That service (`jumpworker_pose.exe`) is missing from the Steam build, so the
+game waits forever at `Camera Status: Connecting` even with an Azure Kinect.
+
+`bodywire jumpwork` implements that service on top of bodywire:
+
+```powershell
+bodywire run --host 127.0.0.1 --port 9871
+bodywire jumpwork --port 11102 --bodywire-port 9871
+```
+
+Verified in `JumpWork_11_11`:
+
+```text
+Connected Service success!
+Camera Init success!
+Camera Status: Connected
+ServerStatus: MotionCaptureMode
+GetSkeData cost = 0-1 ms
+```
+
+Details and the 18-joint map: [`docs/en/jumpwork.md`](docs/en/jumpwork.md).
+
 ## Commands
 
 | Command | Purpose |
@@ -57,6 +85,7 @@ bodywire listen --port 9871
 | `bodywire probe --pose --show` | live pose + skeleton preview |
 | `bodywire run` | daemon: capture → infer → publish |
 | `bodywire listen` | reference receiver / debug print |
+| `bodywire jumpwork` | serve JUMPWORK's pose-service protocol |
 
 ## Output contract
 
@@ -79,7 +108,7 @@ Unity   (m):   ( x, -y,  z) / 1000
 Unreal  (cm):  ( z,  x, -y) / 100
 ```
 
-See [`docs/receivers.md`](docs/receivers.md). Unity needs two `.cs` files;
+See [`docs/en/receivers.md`](docs/en/receivers.md). Unity needs two `.cs` files;
 Unreal is a small runtime plugin; Python is built in.
 
 ## Performance
@@ -97,23 +126,27 @@ Capture alone runs at 30 fps. A USB 3.0 link and a lower colour resolution help.
 
 | Document | Contents |
 | --- | --- |
-| [`docs/install.md`](docs/install.md) | SDK layout, env vars, models, verification |
-| [`docs/running.md`](docs/running.md) | commands, daemon flags, preview, performance |
-| [`docs/architecture.md`](docs/architecture.md) | layers, coordinates, filtering, limits |
-| [`docs/receivers.md`](docs/receivers.md) | Unity / Unreal / Python integration |
-| [`docs/troubleshooting.md`](docs/troubleshooting.md) | device, depth, pose and network issues |
+| [`docs/en/install.md`](docs/en/install.md) | SDK layout, env vars, models, verification |
+| [`docs/en/running.md`](docs/en/running.md) | commands, daemon flags, preview, performance |
+| [`docs/en/architecture.md`](docs/en/architecture.md) | layers, coordinates, filtering, limits |
+| [`docs/en/receivers.md`](docs/en/receivers.md) | Unity / Unreal / Python integration |
+| [`docs/en/jumpwork.md`](docs/en/jumpwork.md) | JUMPWORK service protocol and 18-joint map |
+| [`docs/en/troubleshooting.md`](docs/en/troubleshooting.md) | device, depth, pose and network issues |
 | [`proto/bodywire-v1.md`](proto/bodywire-v1.md) | wire format |
+
+Chinese versions live in [`docs/zh/`](docs/zh/) and
+[`proto/bodywire-v1.zh-CN.md`](proto/bodywire-v1.zh-CN.md).
 
 ## Development
 
 ```powershell
-python -m pip install -e ".[pose,dev]"
+python -m pip install -e ".[pose,jumpwork,dev]"
 pytest
 ```
 
 Tests cover packet round-trips, control datagrams, the UDP receiver, joint
-ordering, 3D lift math, mapping and the temporal filter. They do not need a
-camera.
+ordering, 3D lift math, mapping, the temporal filter and the JUMPWORK protocol.
+They do not need a camera.
 
 ## Limitations
 
@@ -121,6 +154,7 @@ camera.
 - no finger articulation beyond palm / middle tip / thumb tip
 - requires colour; depth-only mode has no pose
 - structured-light depth is noisy on glass, sunlight and black clothing
+- JUMPWORK's VR tracker mode is not implemented
 
 ## License
 
