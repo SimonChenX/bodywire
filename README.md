@@ -3,99 +3,124 @@
 Markerless full-body tracking from an **Orbbec Astra+** (depth + RGB), streamed
 as **k4abt-compatible skeletons over UDP**.
 
-The goal is simple: any app that was written around Azure Kinect Body Tracking
-(`k4abt`) should be able to consume bodywire with a thin receiver, without the
-Azure depth engine and without a Kinect.
-
-> Status: **M0 — capture layer**. Depth/colour acquisition and the wire format
-> are implemented and tested against an Astra+ on Windows. Pose inference and
-> engine receivers land in M1/M2.
-
-## Why not just replace `k4a.dll`?
-
-Because `k4abt` depends on Microsoft's closed-source `depthengine_2_0.dll`,
-which is bound to Azure Kinect calibration. Feeding it Astra+ frames produces
-wrong geometry, not a drop-in replacement. bodywire therefore keeps the
-**data contract** k4abt-compatible (32 joints, mm, right-handed +Y down, 0..3
-confidence) and stays out of the binary-compatibility trap.
-
-## Architecture
+Any app written around Azure Kinect Body Tracking (`k4abt`) can consume
+bodywire with a thin receiver — no Azure depth engine, no Kinect, no `k4a.dll`
+replacement.
 
 ```
-Astra+ (UVC)
-   │  OrbbecSDK 1.10.37 — raw depth + colour + intrinsics
-   ▼
-capture   depth Y16 + colour MJPG + optional D2C alignment
-   ▼
-pose      MediaPipe Pose (33) + Hands  →  2D landmarks            [M1]
-   ▼
-skeleton  lift to 3D (mm) → filter → k4abt 32 joints             [M1]
-   ▼
-transport bodywire/1 UDP datagram, one per frame                  [M0 done]
-   ▼
-receivers Unity C# / Unreal LiveLink                             [M3]
+Astra+ ──► OrbbecSDK ──► MediaPipe Pose/Hands ──► 3D lift ──► 32 joints ──► UDP
 ```
+
+## Status
 
 | Layer | Package | Status |
 | --- | --- | --- |
-| Capture | `bodywire.capture` | ✅ M0 |
-| Wire format | `bodywire.transport` | ✅ M0 |
-| Skeleton model | `bodywire.skeleton` | ✅ M0 (schema) |
-| Pose | `bodywire.pose` | 🚧 M1 |
-| Receivers | `receivers/` | 🚧 M3 |
+| Capture (depth + colour + D2C) | `bodywire.capture` | ✅ tested on Astra+ |
+| Pose (33 + 21/hand) | `bodywire.pose` | ✅ MediaPipe 1.2 |
+| 3D lift + mapping + filter | `bodywire.skeleton` | ✅ unit-tested |
+| Wire format + control packets | `bodywire.transport` | ✅ unit-tested |
+| Daemon (`bodywire run`) | `bodywire.daemon` | ✅ end-to-end on hardware |
+| Python receiver | `bodywire.receiver` | ✅ tested |
+| Unity receiver | `receivers/unity` | ⚠️ source only (no Unity here) |
+| Unreal receiver | `receivers/unreal` | ⚠️ source only (no UE here) |
 
-## Requirements
-
-- Windows x64
-- Orbbec Astra+ (PID `0x0536` / `0x0636`) — no driver needed, UVC
-- OrbbecSDK **1.10.37** (`OrbbecSDK.dll` + `ob_usb.dll` + config XML)
-- Python 3.10+
-- `numpy`, `opencv-python`
-
-Point the loader at the SDK if it is not in a default location:
-
-```powershell
-$env:BODYWIRE_ORBBEC_SDK = "D:\Orbbec\OrbbecSDK_v1.10.37\SDK\lib"
-```
+Not a goal: replacing `k4a.dll`/`k4abt.dll` as binaries. See
+[`docs/architecture.md`](docs/architecture.md#why-not-replace-k4adll).
 
 ## Quick start
 
 ```powershell
-python -m pip install -e .
+git clone git@github.com:SimonChenX/bodywire.git
+cd bodywire
+python -m pip install -e ".[pose,dev]"
+python tools\download_models.py
 
-bodywire devices
-bodywire probe --frames 10 --save captures\probe
+$env:BODYWIRE_ORBBEC_SDK = "D:\Orbbec\OrbbecSDK_v1.10.37\SDK\lib"
+bodywire check
+bodywire probe --pose --show --depth-view
 ```
 
-`probe` prints every stream profile, starts depth + colour with software D2C,
-then reports per-frame depth validity, median distance and intrinsics. `--save`
-writes a colour PNG and a depth PNG/NPY for inspection.
+Publish to a receiver:
 
-## Wire format
-
-See [`proto/bodywire-v1.md`](proto/bodywire-v1.md).
-
-One UDP datagram per frame, 24-byte header + 516 bytes per body:
-
-```
-BWR1 | ver=1 | flags | body_count | joint_count=32 | frame_id u64 | ts_us u64
-body_id u8 | state u8 | 32 × (x i32, y i32, z i32, conf u8)
+```powershell
+bodywire run --host 127.0.0.1 --port 9871
+bodywire listen --port 9871
 ```
 
-## Roadmap
+## Commands
 
-- **M0** capture + protocol + schema ← *done*
-- **M1** MediaPipe Pose/Hands → 3D lift → 32-joint mapping, preview window
-- **M2** `bodywired` daemon: UDP publisher, calibration packet, multi-body
-- **M3** Unity receiver + avatar IK, Unreal LiveLink
-- **M4** optional `k4abt.dll` shim (not a goal; evaluated last)
+| Command | Purpose |
+| --- | --- |
+| `bodywire devices` | list Orbbec devices |
+| `bodywire check` | SDK, camera, models, python deps |
+| `bodywire probe` | raw depth/colour stats, `--profiles` for the full list |
+| `bodywire probe --pose --show` | live pose + skeleton preview |
+| `bodywire run` | daemon: capture → infer → publish |
+| `bodywire listen` | reference receiver / debug print |
+
+## Output contract
+
+32 joints in `k4abt_joint_id_t` order, millimetres, right-handed, **+X right,
++Y down, +Z forward**, confidence `0..3`. One UDP datagram per frame:
+
+```
+BWR1 | ver | flags | body_count | joint_count=32 | frame_id u64 | ts_us u64
+body_id | state | 32 × (x i32, y i32, z i32, conf u8)
+```
+
+`BWC1` control datagrams carry calibration (intrinsics, D2C state) and
+heartbeats. Full spec: [`proto/bodywire-v1.md`](proto/bodywire-v1.md).
+
+## Receivers
+
+```text
+bodywire (mm): +X right, +Y down, +Z forward
+Unity   (m):   ( x, -y,  z) / 1000
+Unreal  (cm):  ( z,  x, -y) / 100
+```
+
+See [`docs/receivers.md`](docs/receivers.md). Unity needs two `.cs` files;
+Unreal is a small runtime plugin; Python is built in.
+
+## Performance
+
+Measured on the development machine (RTX 3090, Astra+ on **USB 2.0**):
+
+```
+depth 640x480@30 Y16 + colour 640x480@30 MJPG, D2C aligned
+bodywire run: ~21 fps, MediaPipe Pose Lite on CPU
+```
+
+Capture alone runs at 30 fps. A USB 3.0 link and a lower colour resolution help.
+
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [`docs/install.md`](docs/install.md) | SDK layout, env vars, models, verification |
+| [`docs/running.md`](docs/running.md) | commands, daemon flags, preview, performance |
+| [`docs/architecture.md`](docs/architecture.md) | layers, coordinates, filtering, limits |
+| [`docs/receivers.md`](docs/receivers.md) | Unity / Unreal / Python integration |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | device, depth, pose and network issues |
+| [`proto/bodywire-v1.md`](proto/bodywire-v1.md) | wire format |
 
 ## Development
 
 ```powershell
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[pose,dev]"
 pytest
 ```
+
+Tests cover packet round-trips, control datagrams, the UDP receiver, joint
+ordering, 3D lift math, mapping and the temporal filter. They do not need a
+camera.
+
+## Limitations
+
+- one tracked body (format supports more; pipeline does not yet)
+- no finger articulation beyond palm / middle tip / thumb tip
+- requires colour; depth-only mode has no pose
+- structured-light depth is noisy on glass, sunlight and black clothing
 
 ## License
 

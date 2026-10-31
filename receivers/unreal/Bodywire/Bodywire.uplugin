@@ -1,0 +1,18 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "bodywire",
+  "Description": "Receives bodywire/1 skeletons over UDP and exposes them to Blueprints.",
+  "Category": "Input",
+  "CreatedBy": "bodywire",
+  "CanContainContent": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "Bodywire",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ]
+}
