@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Test / tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local runtime output
+captures/
+recordings/
+Log/
+*.npy
+*.npz
+*.bag
+
+# Vendored SDK (installed separately, never committed)
+vendor/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

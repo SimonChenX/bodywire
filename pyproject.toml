@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bodywire"
+version = "0.1.0"
+description = "Markerless full-body tracking from an Orbbec Astra+, streamed as k4abt-compatible skeletons over UDP."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Simon Chen" }]
+keywords = ["orbbec", "astra", "depth", "body-tracking", "k4abt", "udp", "pose"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Multimedia :: Video :: Capture",
+]
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+]
+
+[project.optional-dependencies]
+pose = [
+    "mediapipe>=0.10",
+    "onnxruntime>=1.17",
+]
+dev = [
+    "pytest>=8",
+]
+
+[project.scripts]
+bodywire = "bodywire.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["bodywire*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
