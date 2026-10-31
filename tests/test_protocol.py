@@ -93,3 +93,11 @@ def test_body_from_skeleton():
     restored = body.to_skeleton()
     assert restored.body_id == 9
     assert restored.skeleton.positions[0] == (1.0, -3.0, 3000.0)
+
+
+def test_body_from_skeleton_sanitises_non_finite():
+    positions = [(0.0, 0.0, 0.0)] * JOINT_COUNT
+    positions[0] = (float("nan"), float("inf"), 1234.6)
+    skel = Skeleton.from_pairs(positions)
+    body = Body.from_skeleton(SkeletonBody(body_id=1, skeleton=skel))
+    assert body.joints_mm[0] == (0, 0, 1235)

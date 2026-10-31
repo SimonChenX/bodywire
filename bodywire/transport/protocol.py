@@ -83,6 +83,13 @@ class ControlType(IntEnum):
     HEARTBEAT = 2
 
 
+def _mm(value: float) -> int:
+    """Round to millimetres, mapping NaN/inf to 0 (invalid joint)."""
+    if value != value or value in (float("inf"), float("-inf")):
+        return 0
+    return int(round(value))
+
+
 @dataclass(frozen=True)
 class Body:
     """Wire representation of one body (decoded positions only)."""
@@ -100,9 +107,7 @@ class Body:
 
     @classmethod
     def from_skeleton(cls, body: SkeletonBody) -> "Body":
-        joints = tuple(
-            (int(round(x)), int(round(y)), int(round(z))) for x, y, z in body.skeleton.positions
-        )
+        joints = tuple((_mm(x), _mm(y), _mm(z)) for x, y, z in body.skeleton.positions)
         confidence = tuple(int(c) for c in body.skeleton.confidence)
         return cls(
             body_id=int(body.body_id),
